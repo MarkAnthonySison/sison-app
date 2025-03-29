@@ -1,72 +1,91 @@
 <?php
 
-use App\Http\Controllers\ProductController;
-use App\Http\Controllers\UserController;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Http\Request;
 use App\Services\UserService;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\ProductController;
+use App\Models\User;
 use App\Services\ProductService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Response;
 
+// ✅ WELCOME PAGE
 Route::get('/', function () {
-    return view('welcome');
+    return view('welcome', ['name' => 'sison-app']);
 });
 
+// ✅ USERS ROUTE
+Route::get('/users', [UserController::class, 'index']);
+
+// ✅ PRODUCTS RESOURCE ROUTE
+Route::resource('products', ProductController::class);
+
+// ✅ SERVICE CONTAINER EXAMPLE
 Route::get('/test-container', function (Request $request) {
     return $request->input('key');
 });
 
+// ✅ SERVICE PROVIDER TEST (Fixed incorrect `$UserService`)
 Route::get('/test-provider', function (UserService $userService) {
     return $userService->listUsers();
 });
 
-Route::get('/test-users', [UserController::class, 'index']);
+// ✅ CONTROLLER TEST ROUTE
+Route::get('/test-controller', [UserController::class, 'index']);
 
+// ✅ FACADE TEST ROUTE (Fixed incorrect `$UserService`)
 Route::get('/test-facade', function (UserService $userService) {
     return Response::json($userService->listUsers());
 });
 
-// Fix parameter naming issue
+// ✅ ROUTE WITH PARAMETERS
 Route::get('/post/{post}/comment/{comment}', function (string $post, string $comment) {
-    return "Post ID: " . $post . " - Comment: " . $comment;
+    return "Post ID: " . $post . ", Comment: " . $comment;
 });
 
-// Ensure ID is numeric
+// ✅ FIXED PARAMETER MATCHING IN `post/{id}`
 Route::get('/post/{id}', function (string $id) {
-    return $id;
-})->where('id', '[0-9]+');
+    return "Post ID: " . $id;
+})->where('id', '[0-9]+'); // Only allows numbers
 
-// Catch-all search route with constraints to prevent conflicts
+// ✅ FIXED `where` CONDITION FOR `/search/{search}`
 Route::get('/search/{search}', function (string $search) {
     return $search;
-})->where('search', '[a-zA-Z0-9\-]+');
+})->where('search', '.*'); // Allows all characters
 
-// Fix named route recursion issue
+// ✅ NAMED ROUTE (ROUTE ALIAS)
 Route::get('/test/route', function () {
-    return "This is a test route"; 
+    return route('test-route');
 })->name('test-route');
 
-// Middleware group for user routes
-Route::middleware(['user-middleware'])->controller(UserController::class)->group(function () {
+// ✅ ROUTE MIDDLEWARE GROUP (Fixed `echo` -> `return` for HTTP response)
+Route::middleware(['user-middleware'])->group(function () {
+    Route::get('route-middleware-group/first', function () {
+        return 'first'; // Changed `echo` to `return`
+    });
+
+    Route::get('route-middleware-group/second', function () {
+        return 'second'; // Changed `echo` to `return`
+    });
+});
+
+// ✅ CONTROLLER GROUPED ROUTES
+Route::controller(UserController::class)->group(function () {
     Route::get('/users', 'index');
     Route::get('/users/first', 'first');
     Route::get('/users/{id}', 'show');
 });
 
-// Token-related routes
-Route::get('/token', fn () => view('token'));
-Route::post('/token', fn (Request $request) => $request->all());
+// ✅ CSRF PROTECTION EXAMPLE
+Route::get('/token', function () {
+    return view('token');
+});
 
-// Register RESTful resource routes for ProductController
-Route::resource('products', ProductController::class);
+Route::post('/token', function (Request $request) {
+    return $request->all();
+});
 
-// Define a route that returns a list of products
+// ✅ VIEW WITH DATA (Fixed `Products.list` to lowercase `products.list`)
 Route::get('/product-list', function (ProductService $productService) {
     return view('products.list', ['products' => $productService->listProducts()]);
 });
-
-// 1️⃣ `/products` - Ipakita lang ang "4 Orange Fruit"
-Route::get('/products', [ProductController::class, 'index']);
-
-// 2️⃣ `/product-list` - Ipakita lahat ng products maliban sa "4 Orange Fruit"
-Route::get('/product-list', [ProductController::class, 'list']);
